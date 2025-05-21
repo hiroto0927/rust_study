@@ -1,0 +1,56 @@
+// For format details, see https://aka.ms/devcontainer.json. For config options, see the
+// README at: https://github.com/devcontainers/templates/tree/main/src/docker-in-docker
+{
+  "name": "minikube",
+  "dockerComposeFile": ["../docker-compose-devcontainer.yaml"],
+  "service": "devcontainer",
+  "workspaceFolder": "/workspace",
+  "shutdownAction": "stopCompose",
+  "features": {
+    // "ghcr.io/devcontainers/features/rust:1": {},
+    "ghcr.io/devcontainers/features/python:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.copilot",
+        "eamodio.gitlens",
+        "yzhang.markdown-all-in-one",
+        "hediet.vscode-drawio",
+        "bierner.markdown-preview-github-styles",
+        "bierner.markdown-mermaid",
+        "ms-python.black-formatter",
+        "ms-python.vscode-pylance",
+        "PKief.material-icon-theme",
+        "rust-lang.rust-analyzer", // Rust Analyzer for Rust development
+        "fill-labs.dependi",       // Crates for managing dependencies
+        "tamasfe.even-better-toml", // TOML support for Cargo.toml files
+        "JScearcy.rust-doc-viewer", // Rust documentation viewer
+        "vadimcn.vscode-lldb", // LLDB support for debugging Rust code
+        "swellaby.vscode-rust-test-adapter", // Test adapter for Rust
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.formatOnPaste": true,
+        "editor.tabSize": 2,
+        "editor.indentSize": 2,
+        "files.exclude": {
+          "**/__pycache__": true
+        },
+        "python.analysis.extraPaths": [
+          "/workspace/auth-api/venv/lib/python3.9/site-packages"
+        ],
+        "markdown-preview-github-styles.colorTheme": "light",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": false,
+        "python.linting.flake8Enabled": false,
+        "python.linting.lintOnSave": true,
+        "python.formatting.provider": "black",
+        "[rust]": {
+	          "editor.defaultFormatter": "rust-lang.rust-analyzer",
+        },  
+      }
+    },
+    "postCreateCommand": "sh vscode_extensions_install.sh"
+  }
+}
