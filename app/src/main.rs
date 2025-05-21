@@ -1,6 +1,6 @@
 use std::{
     fs::{self, File},
-    io::Write,
+    io::{Read, Write},
 };
 
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -52,8 +52,12 @@ fn main() {
         let relative_path = file.strip_prefix(ABS_RIR).unwrap().to_str().unwrap();
 
         zip.start_file(relative_path, options).unwrap();
-        zip.write(b"hello").unwrap();
-        zip.flush().unwrap();
+        // zip.write(b"hello").unwrap();
+        // zip.flush().unwrap();
+        let mut f = File::open(&file).unwrap();
+        let mut buffer: Vec<u8> = Vec::new();
+        f.read_to_end(&mut buffer).unwrap();
+        zip.write_all(&buffer).unwrap();
     }
 
     zip.finish().unwrap();
