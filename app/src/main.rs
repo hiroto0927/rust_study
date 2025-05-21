@@ -1,6 +1,6 @@
 use std::{
     fs::{self, File},
-    io::{Read, Write},
+    io::{BufReader, Read, Write},
 };
 
 use zip::{ZipWriter, write::SimpleFileOptions};
@@ -16,15 +16,10 @@ fn seek_files_by_dir(dir: fs::ReadDir) -> Vec<std::path::PathBuf> {
         if path.is_file() {
             files.push(path);
         } else if path.is_dir() {
-            let sub_dir = fs::read_dir(&path);
-            match sub_dir {
-                Ok(entries) => {
-                    let sub_files = seek_files_by_dir(entries);
-                    files.extend(sub_files);
-                }
-                Err(e) => {
-                    eprintln!("Error reading directory: {}", e);
-                }
+            if let Ok(entries) = fs::read_dir(&path) {
+                files.extend(seek_files_by_dir(entries));
+            } else {
+                eprintln!("Error reading directory: {:?}", path);
             }
         }
     }
@@ -39,7 +34,7 @@ fn main() {
     let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
     let dir = match dir {
-        Ok(entries) => entries,
+        Ok(dir) => dir,
         Err(e) => {
             eprintln!("Error reading directory: {}", e);
             return;
@@ -47,17 +42,18 @@ fn main() {
     };
 
     let files = seek_files_by_dir(dir);
+    let mut buffer: Vec<u8> = Vec::new();
 
     for file in files {
         let relative_path = file.strip_prefix(ABS_RIR).unwrap().to_str().unwrap();
 
         zip.start_file(relative_path, options).unwrap();
-        // zip.write(b"hello").unwrap();
-        // zip.flush().unwrap();
-        let mut f = File::open(&file).unwrap();
-        let mut buffer: Vec<u8> = Vec::new();
-        f.read_to_end(&mut buffer).unwrap();
+        let f = File::open(&file).unwrap();
+        let mut reader = BufReader::new(&f);
+
+        reader.read_to_end(&mut buffer).unwrap();
         zip.write_all(&buffer).unwrap();
+        buffer.clear();
     }
 
     zip.finish().unwrap();
