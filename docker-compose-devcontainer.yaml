@@ -8,8 +8,8 @@ services:
     tty: true
     volumes:
       - .:/workspace:rw
-      - ~/.ssh:/home/node/.ssh:ro
-      - ~/.aws:/home/node/.aws:ro
+      - ~/.ssh:/home/vscode/.ssh:ro
+      - ~/.aws:/home/vscode/.aws:ro
     environment:
       - CHOKIDAR_USEPOLLING=true
 
