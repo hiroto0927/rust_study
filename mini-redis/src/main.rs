@@ -6,9 +6,9 @@ use std::collections::BinaryHeap;
 use std::sync::Arc;
 use tokio::sync::{Mutex, mpsc};
 use tokio::task;
-use tokio::time::{Duration, sleep};
+use tokio::time::{Duration, sleep, timeout};
 
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Clone)]
 struct User {
     name: String,
     age: u8,
@@ -35,7 +35,7 @@ impl PartialOrd for User {
 #[tokio::main]
 async fn main() {
     let (tx, mut rx) = mpsc::channel::<User>(32);
-    let (tx2, mut rx2) = mpsc::channel::<User>(32);
+    let (tx2, mut rx2) = mpsc::channel::<User>(1);
     let heap = Arc::new(Mutex::new(BinaryHeap::<User>::new()));
 
     let _ = task::spawn(async move {
@@ -44,7 +44,7 @@ async fn main() {
 
             match result {
                 Ok(_) => (),
-                Err(e) => eprintln!("Failed to send user: {}", e),
+                Err(e) => eprintln!("エラー: {}", e),
             }
 
             // Simulate some delay
@@ -56,7 +56,7 @@ async fn main() {
     let heap_push = heap.clone();
     let _ = task::spawn(async move {
         while let Some(message) = rx.recv().await {
-            println!("Received user: {:?}", message);
+            println!("メッセージを受信しました。送信をします。: {:?}", message);
             heap_push.lock().await.push(message);
         }
     });
@@ -65,12 +65,29 @@ async fn main() {
     let heap_pop = heap.clone();
     let _ = task::spawn(async move {
         loop {
-            sleep(Duration::from_millis(100)).await; // 0.1秒ごとにチェック
             let mut heap = heap_pop.lock().await;
-            if let Some(popped) = heap.pop() {
+            if let Some(item) = heap.pop() {
+                let clone_item = item.clone();
                 drop(heap); // ロックを早めに解放
-                if tx2.send(popped).await.is_err() {
-                    eprintln!("Failed to send user to second channel");
+                let result = timeout(Duration::from_millis(0), tx2.send(item)).await;
+
+                match result {
+                    // Ok(_) => (),
+                    // Err(e) => {
+                    //     eprintln!("チャネル2への送信に失敗しました。: {}", e);
+                    //     heap_pop.lock().await.push(e.0); // 再度push
+                    // }
+                    Ok(Ok(_)) => (),
+                    Ok(Err(e)) => {
+                        eprintln!("チャネル2への送信に失敗しました。: {}", e);
+                        heap_pop.lock().await.push(e.0); // 再度push
+                    }
+                    Err(_) => {
+                        eprintln!("送信がタイムアウトしました");
+                        // 必要ならitemを再度push
+                        heap_pop.lock().await.push(clone_item);
+                        sleep(Duration::from_secs(1)).await; // 再試行までの待機
+                    }
                 }
             }
         }
@@ -78,5 +95,6 @@ async fn main() {
 
     while let Some(message) = rx2.recv().await {
         println!("Received user from second channel: {:?}", message);
+        sleep(Duration::from_secs(10)).await; // Simulate processing delay
     }
 }
